@@ -387,6 +387,24 @@ Example commands on Windows PowerShell:
 1. .\.venv\Scripts\Activate.ps1
 2. pip install flask flask-sqlalchemy pymysql python-dotenv
 
+## Environment Variables
+
+This project requires a `.env` file in the root directory.
+
+Create one and add your configuration values.
+
+Use the following template:
+"
+# Database Credentials
+DB_USERNAME=root
+DB_PASSWORD=your password
+DB_HOST=localhost
+DB_NAME=gym_app
+# Flask Security 
+SECRET_KEY=40b001022598a47086f420c9d13229ac3a84584272a15d97e4635e7a369fe620
+"
+
+
 ### Start app
 
 Run:
