@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Your Details - Gym 4 U{% endblock %}
+
+{% block content %}
+<!--
+Member details template.
+Purpose: collect identity/account fields after gym selection and before payment.
+-->
+<div class="calculator-container member-details-page">
+    <h1>Your Details</h1>
+    <p>Add your full name and email only when you are ready to continue to payment.</p>
+
+    <!-- Account creation/details form posted to `/member-details`. -->
+    <form method="POST" action="{{ url_for('member_details') }}" novalidate>
+        {% if error %}
+        <!-- Server-side validation feedback (name/email/password rules). -->
+        <div class="alert alert-error">
+            <span>{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="full_name">Full Name</label>
+            <input type="text" id="full_name" name="full_name" value="{{ full_name }}"
+                   placeholder="First name and surname"
+                   maxlength="60"
+                   pattern="[A-Za-z][A-Za-z\s'\-]{2,59}"
+                   title="Enter letters only, with at least a first name and surname."
+                   required>
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" value="{{ email }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password"
+                   placeholder="At least 8 characters" required>
+        </div>
+
+        <div class="form-group">
+            <label for="confirm_password">Confirm Password</label>
+            <input type="password" id="confirm_password" name="confirm_password"
+                   placeholder="Repeat your password" required>
+        </div>
+
+        <div class="form-actions">
+            <!-- Continue to payment confirmation step. -->
+            <button type="submit" class="btn-submit">Proceed to payment</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    const fullNameInput = document.getElementById('full_name');
+
+    function normalizeFullName(value) {
+        let cleaned = value.replace(/[^A-Za-z\s'\-]/g, '');
+        cleaned = cleaned.replace(/\s{2,}/g, ' ');
+        cleaned = cleaned.replace(/^\s+/, '');
+        return cleaned.slice(0, 60);
+    }
+
+    if (fullNameInput) {
+        fullNameInput.addEventListener('input', function () {
+            this.value = normalizeFullName(this.value);
+        });
+
+        fullNameInput.addEventListener('paste', function (e) {
+            e.preventDefault();
+            const pasted = (e.clipboardData || window.clipboardData).getData('text');
+            this.value = normalizeFullName(this.value + pasted);
+        });
+    }
+</script>
+{% endblock %}

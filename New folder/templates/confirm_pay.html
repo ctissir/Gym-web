@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+
+{% block title %}Payment - Gym 4 U{% endblock %}
+
+{% block content %}
+<!--
+Payment confirmation template.
+Purpose: review selected membership, collect card/billing details, and submit to `/confirm-pay`.
+Card fields are validated server-side and not persisted as payment vault data.
+-->
+<div class="calculator-container no-card payment-page">
+    <h1>Complete Your Subscription</h1>
+    <p>You are one step away from starting your monthly membership. Your card will be charged automatically every month.</p>
+
+    <!-- Read-only summary from session data prepared by the backend. -->
+    <div class="summary-card">
+        <h3 class="form-section-title"><i class="fas fa-receipt"></i> Order Summary</h3>
+        <div class="summary-grid">
+            <p><strong>Member:</strong> {{ member_name }}</p>
+            <p><strong>Email:</strong> {{ member_email }}</p>
+            <p><strong>Chosen Gym:</strong> {{ selected_gym }}</p>
+            <p><strong>Gym Access:</strong> {{ gym_type }}</p>
+            <p><strong>Add-ons:</strong> {{ addons | join(', ') if addons else 'None' }}</p>
+            <hr />
+            <p><strong>Monthly total:</strong> &pound;{{ '%.2f'|format(monthly_total|default(0)) }}</p>
+            {% if joining_fee|default(0) > 0 %}
+            <p><strong>Joining fee (one-time):</strong> &pound;{{ '%.2f'|format(joining_fee) }}</p>
+            <p><strong>Initial payment now:</strong> &pound;{{ '%.2f'|format(initial_total) }}</p>
+            {% else %}
+            <p><strong>Initial payment now:</strong> &pound;{{ '%.2f'|format(initial_total|default(monthly_total|default(0))) }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Billing behavior notice for recurring monthly cycle. -->
+    <div class="subscription-notice">
+        <div class="subscription-notice-icon"><i class="fas fa-sync-alt"></i></div>
+        <div>
+            <strong>Monthly Subscription</strong>
+            <p>Your card will be charged automatically on the same date every month. You can cancel at any time from your account settings.</p>
+        </div>
+    </div>
+
+    <!-- Live visual card preview, updated by JS as user types. -->
+     <!-- JS is helpful for improving user confidence and reducing input errors by showing a real-time preview of the card details as they are entered. This can help users catch mistakes before submitting the form. -->
+    <div class="card-preview" id="cardPreview">
+        <div class="card-preview-top">
+            <div class="card-chip"><i class="fas fa-microchip"></i></div>
+            <div class="card-network" id="cardNetwork">
+                <i class="fas fa-credit-card"></i>
+            </div>
+        </div>
+        <div class="card-number-display" id="cardNumberDisplay">•••• •••• •••• ••••</div>
+        <div class="card-preview-bottom">
+            <div>
+                <div class="card-label">Card Holder</div>
+                <div class="card-value" id="cardHolderDisplay">FULL NAME</div>
+            </div>
+            <div>
+                <div class="card-label">Expires</div>
+                <div class="card-value" id="cardExpiryDisplay">MM / YY</div>
+            </div>
+        </div>
+    </div>
+
+    <!--
+    Payment form fields posted to `/confirm-pay`:
+    cardholder_name, card_number, expiry, cvv, billing_postcode.
+    -->
+    <form id="paymentForm" method="POST" action="{{ url_for('confirm_pay') }}" novalidate>
+
+        <div id="clientPayError" class="alert alert-error" style="display: none;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span id="clientPayErrorText"></span>  <!-- span for dynamic error message -->
+        </div>
+
+        {% if pay_error %}
+        <!-- Server-side validation error from confirm_pay route. -->
+        <div class="alert alert-error">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>{{ pay_error }}</span>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="cardholder_name">Cardholder Name</label>
+            <div class="input-icon-wrap">
+                <i class="fas fa-user input-icon"></i>
+                <input type="text" id="cardholder_name" name="cardholder_name"
+                       placeholder="Name exactly as on card"
+                      maxlength="26" autocomplete="cc-name"
+                      pattern="[A-Za-z][A-Za-z\s'\-]{1,25}"
+                      title="Use 2-26 letters only (spaces, apostrophes, and hyphens allowed)."
+                      required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="card_number">Card Number</label>
+            <div class="input-icon-wrap">
+                <i class="fas fa-credit-card input-icon"></i>
+                <input type="text" id="card_number" name="card_number"
+                       placeholder="1234 5678 9012 3456"
+                       maxlength="19" inputmode="numeric"
+                       autocomplete="cc-number" required>
+            </div>
+        </div>
+
+        <div class="pay-row">
+            <div class="form-group">
+                <label for="expiry">Expiry Date</label>
+                <div class="input-icon-wrap">
+                    <i class="fas fa-calendar-alt input-icon"></i>
+                    <input type="text" id="expiry" name="expiry"
+                           placeholder="MM / YY"
+                           maxlength="7" inputmode="numeric"
+                           autocomplete="cc-exp" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="cvv">
+                    CVV
+                    <span class="cvv-tooltip" tabindex="0" aria-label="The 3-digit code on the back of your card">
+                        <i class="fas fa-question-circle"></i>
+                    </span>
+                </label>
+                <div class="input-icon-wrap">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input type="text" id="cvv" name="cvv"
+                           placeholder="•••"
+                           maxlength="4" inputmode="numeric"
+                           autocomplete="cc-csc" required>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="billing_postcode">Billing Postcode</label>
+            <div class="input-icon-wrap">
+                <i class="fas fa-map-marker-alt input-icon"></i>
+                <input type="text" id="billing_postcode" name="billing_postcode"
+                       placeholder="e.g. SW1A 1AA"
+                       maxlength="8" autocomplete="postal-code" required>
+            </div>
+        </div>
+
+        <div class="secure-badge">
+            <!-- Compliance/security reassurance copy for user trust. -->
+            <i class="fas fa-shield-alt"></i>
+            <span>256-bit SSL encrypted &mdash; your card details are never stored on our servers</span>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-submit btn-pay" id="payBtn">
+                <i class="fas fa-lock"></i>
+                {% if initial_total and initial_total|float > 0 %}
+                Pay &pound;{{ '%.2f'|format(initial_total) }} now
+                {% else %}
+                Confirm Monthly Subscription
+                {% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Card number: enforce numeric formatting and infer likely network icon.
+    const cardNumberInput = document.getElementById('card_number');
+    const cardNumberDisplay = document.getElementById('cardNumberDisplay');
+    const cardNetwork = document.getElementById('cardNetwork');
+    const cardPreview = document.getElementById('cardPreview');
+
+    cardNumberInput.addEventListener('input', function () {
+        let raw = this.value.replace(/\D/g, '').slice(0, 16);
+        this.value = raw.replace(/(.{4})/g, '$1 ').trim();
+
+        // Show only last 4 digits in preview and mask all preceding digits.
+        const last4 = raw.slice(-4);
+        const masked = ('•'.repeat(16 - last4.length) + last4).slice(-16);
+        cardNumberDisplay.textContent = masked.replace(/(.{4})/g, '$1 ').trim();
+
+        // Lightweight first-digit network detection for display styling only.
+        // it detects based on bthe first digit which type of card it is (Visa, Mastercard, Amex) and updates the card preview accordingly.
+        //  This is purely for user experience and does not affect payment processing.
+        const first = raw[0];
+        if (first === '4') {
+            cardNetwork.innerHTML = '<i class="fab fa-cc-visa"></i>';
+            cardPreview.classList.remove('mc', 'amex');
+            cardPreview.classList.add('visa');
+        } else if (first === '5') {
+            cardNetwork.innerHTML = '<i class="fab fa-cc-mastercard"></i>';
+            cardPreview.classList.remove('visa', 'amex');
+            cardPreview.classList.add('mc');
+        } else if (first === '3') {
+            cardNetwork.innerHTML = '<i class="fab fa-cc-amex"></i>';
+            cardPreview.classList.remove('visa', 'mc');
+            cardPreview.classList.add('amex');
+        } else {
+            cardNetwork.innerHTML = '<i class="fas fa-credit-card"></i>';
+            cardPreview.classList.remove('visa', 'mc', 'amex');
+        }
+    });
+
+    // Cardholder name mirrored to the card preview.
+    const cardholderInput = document.getElementById('cardholder_name');
+    const cardHolderDisplay = document.getElementById('cardHolderDisplay');
+    function normalizeCardholderName(value) {
+        // Keep only valid name characters and normalize repeated whitespace.
+        let cleaned = value.replace(/[^A-Za-z\s'\-]/g, '');
+        cleaned = cleaned.replace(/\s{2,}/g, ' ');
+        cleaned = cleaned.replace(/^\s+/, '');
+        return cleaned.slice(0, 26);
+    }
+
+    cardholderInput.addEventListener('input', function () {
+        this.value = normalizeCardholderName(this.value);
+        cardHolderDisplay.textContent = this.value.toUpperCase() || 'FULL NAME';
+    });
+
+    cardholderInput.addEventListener('paste', function (e) {
+        e.preventDefault();
+        const pasted = (e.clipboardData || window.clipboardData).getData('text');
+        const nextValue = normalizeCardholderName(this.value + pasted);
+        this.value = nextValue;
+        cardHolderDisplay.textContent = this.value.toUpperCase() || 'FULL NAME';
+    });
+
+    // Expiry input formatting: MM / YY.
+    const expiryInput = document.getElementById('expiry');
+    const cardExpiryDisplay = document.getElementById('cardExpiryDisplay');
+    expiryInput.addEventListener('input', function () {
+        let raw = this.value.replace(/\D/g, '').slice(0, 4);
+        if (raw.length >= 3) {
+            this.value = raw.slice(0, 2) + ' / ' + raw.slice(2);
+        } else {
+            this.value = raw;
+        }
+        cardExpiryDisplay.textContent = this.value || 'MM / YY';
+    });
+
+    // CVV input constrained to numeric characters.
+    const cvvInput = document.getElementById('cvv');
+    cvvInput.addEventListener('input', function () {
+        this.value = this.value.replace(/\D/g, '').slice(0, 4);
+    });
+
+    // Billing postcode formatting: uppercase and single space before last 3 chars.
+    const postcodeInput = document.getElementById('billing_postcode');
+    postcodeInput.addEventListener('input', function () {
+        const compact = this.value.toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '').slice(0, 7);
+        if (compact.length > 3) {
+            this.value = compact.slice(0, -3) + ' ' + compact.slice(-3);
+        } else {
+            this.value = compact;
+        }
+    });
+
+    function showClientPayError(message) {
+        const container = document.getElementById('clientPayError');
+        const text = document.getElementById('clientPayErrorText');
+        text.textContent = message;
+        container.style.display = 'flex';
+    }
+
+    function clearClientPayError() {
+        const container = document.getElementById('clientPayError');
+        const text = document.getElementById('clientPayErrorText');
+        text.textContent = '';
+        container.style.display = 'none';
+    }
+
+    // Validate key fields before submit, then show spinner to prevent duplicate submits.
+    document.getElementById('paymentForm').addEventListener('submit', function (e) {
+        clearClientPayError();
+
+        const cardholderValue = cardholderInput.value.trim();
+        const cardholderPattern = /^[A-Za-z][A-Za-z\s'\-]{1,25}$/;
+        if (!cardholderPattern.test(cardholderValue)) {
+            e.preventDefault();
+            showClientPayError('Cardholder name must be 2-26 characters and contain letters only.');
+            return;
+        }
+
+        const cardDigits = cardNumberInput.value.replace(/\D/g, '');
+        if (!/^\d{16}$/.test(cardDigits)) {
+            e.preventDefault();
+            showClientPayError('Card number must contain exactly 16 digits.');
+            return;
+        }
+
+        const postcodeValue = postcodeInput.value.toUpperCase().replace(/\s+/g, '');
+        const ukPostcodePattern = /^(GIR0AA|[A-Z]{1,2}\d[A-Z\d]?\d[A-Z]{2})$/;
+        if (!ukPostcodePattern.test(postcodeValue)) {
+            e.preventDefault();
+            showClientPayError('Please enter a valid UK billing postcode (for example SW1A 1AA).');
+            return;
+        }
+
+        const btn = document.getElementById('payBtn');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing…';
+        btn.disabled = true;
+    });
+</script>
+{% endblock %}

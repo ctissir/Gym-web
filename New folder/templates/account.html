@@ -1,0 +1,482 @@
+{% extends "base.html" %}
+
+{% block title %}My Account - Gym 4 U{% endblock %}
+
+{% block content %}
+<!--
+Account dashboard template.
+Purpose: show subscription status, cycle timing, selected services, and account actions
+(renew, manage memberships at cycle end, logout).
+-->
+<section class="account-page">
+    <div class="calculator-container">
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <i class="fas fa-info-circle"></i>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    <!--
+    Hero section:
+    - Greeting
+    - Status pill and member ID
+    - Circular days-remaining ring
+    -->
+        <div class="account-hero" data-start-date="{{ starts_at or '' }}" data-end-date="{{ ends_at or '' }}">
+            <div class="account-hero-content">
+                <p class="account-kicker">Member Dashboard</p>
+                <h1>Hello, {{ member_name.split(' ')[0] if member_name else 'Member' }}</h1>
+                <p class="account-intro">Track your plan, monitor remaining time, and manage your membership in one place.</p>
+                <div class="hero-meta-row">
+                    <span class="status-pill status-pill-{{ subscription_status|lower }}">{{ subscription_status|capitalize }}</span>
+                    <span class="member-id"><i class="fas fa-fingerprint"></i> {{ membership_id }}</span>
+                </div>
+            </div>
+
+            <div class="hero-ring-card">
+                <p>Days Remaining</p>
+                <div class="ring-wrap">
+                    <svg viewBox="0 0 120 120" class="progress-ring" aria-hidden="true">
+                        <circle class="ring-track" cx="60" cy="60" r="50"></circle>
+                        <circle class="ring-progress" id="ringProgress" cx="60" cy="60" r="50"></circle>
+                    </svg>
+                    <div class="ring-center">
+                        <strong id="daysRemaining">{{ remaining_days }}</strong>
+                        <small>days</small>
+                    </div>
+                </div>
+                <small>Next billing: {{ next_billing_label }}</small>
+            </div>
+        </div>
+
+        <!-- Quick KPI tiles for at-a-glance subscription data. -->
+        <div class="account-stats-grid">
+            <article class="stat-tile">
+                <p>Total Add-ons</p>
+                <h3>{{ addon_count }}</h3>
+                <small><i class="fas fa-layer-group"></i> Selected services</small>
+            </article>
+            <article class="stat-tile">
+                <p>Gym Access</p>
+                <h3>{{ gym_type }}</h3>
+                <small><i class="fas fa-dumbbell"></i> Active plan</small>
+            </article>
+            <article class="stat-tile">
+                <p>Membership Type</p>
+                <h3>{{ 'Student' if is_student else 'Standard' }}</h3>
+                <small><i class="fas fa-user-graduate"></i> Age {{ age }}</small>
+            </article>
+        </div>
+
+        <!-- Account identity and add-on summary cards. -->
+        <div class="account-board">
+            <div class="summary-card">
+                <h3 class="form-section-title"><i class="fas fa-user-circle"></i> Account Details</h3>
+                <div class="summary-grid summary-grid-account">
+                    <p><strong>Name:</strong> {{ member_name }}</p>
+                    <p><strong>Email:</strong> {{ member_email }}</p>
+                    <p><strong>Membership ID:</strong> {{ membership_id }}</p>
+                    <p><strong>Status:</strong> {{ subscription_status|capitalize }}</p>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <h3 class="form-section-title"><i class="fas fa-gift"></i> What's Included</h3>
+                <div class="addon-chip-wrap">
+                    {% if has_classes %}
+                        <span class="addon-chip"><i class="fas fa-check-circle"></i> Classes</span>
+                    {% endif %}
+                    {% if has_swimming_pool %}
+                        <span class="addon-chip"><i class="fas fa-check-circle"></i> Swimming Pool</span>
+                    {% endif %}
+                    {% if has_massage %}
+                        <span class="addon-chip"><i class="fas fa-check-circle"></i> Massage</span>
+                    {% endif %}
+                    {% if has_physiotherapy %}
+                        <span class="addon-chip"><i class="fas fa-check-circle"></i> Physiotherapy</span>
+                    {% endif %}
+                    {% if not has_classes and not has_swimming_pool and not has_massage and not has_physiotherapy %}
+                        <p class="muted-note">No add-ons selected yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Live countdown to subscription end timestamp. -->
+        <div class="countdown-card" data-end-date="{{ ends_at or '' }}">
+            <h3 class="form-section-title"><i class="fas fa-hourglass-half"></i> Membership Countdown</h3>
+            <div class="countdown-grid">
+                <div class="countdown-item">
+                    <span id="cdDays">0</span>
+                    <small>Days</small>
+                </div>
+                <div class="countdown-item">
+                    <span id="cdHours">0</span>
+                    <small>Hours</small>
+                </div>
+                <div class="countdown-item">
+                    <span id="cdMinutes">0</span>
+                    <small>Minutes</small>
+                </div>
+                <div class="countdown-item">
+                    <span id="cdSeconds">0</span>
+                    <small>Seconds</small>
+                </div>
+            </div>
+        </div>
+
+        <!--
+        BMI panel:
+        - Accepts weight and height inputs
+        - Validates weight input strictly before calculation
+        - Shows BMI category and hologram visual state
+        -->
+        <!-- ============================================================
+             BMI HEALTH CHECK PANEL
+             Entirely client-side — no form submission, no backend route,
+             and no data is stored or sent anywhere.
+             JavaScript (updateBmi / validateBmiInputs / setBmiState) at
+             the bottom of this template handles all calculation and UI
+             updates live on every 'input' event.
+             ============================================================ -->
+        <div class="bmi-card">
+
+            <!-- Panel header: section title + brief instruction for the user -->
+            <div class="bmi-head">
+                <h3 class="form-section-title"><i class="fas fa-heartbeat"></i> BMI Health Check</h3>
+                <p>Enter your current measurements to see your BMI status and body hologram.</p>
+            </div>
+
+            <!-- Two-column CSS grid: left col = inputs/results, right col = hologram.
+                 Grid collapses to a single column on narrow viewports (see styles.css). -->
+            <div class="bmi-grid">
+
+                <!-- LEFT COLUMN — input fields and live computed results -->
+                <div class="bmi-inputs">
+
+                    <!-- Weight field.
+                         type="number" + inputmode="decimal" shows numeric keyboard on mobile.
+                         min/max are visual hints; hard enforcement is done in validateBmiInputs(). -->
+                    <div class="form-group">
+                        <label for="bmiWeight">Weight (kg)</label>
+                        <input type="number" id="bmiWeight" min="20" max="300" step="0.1" placeholder="e.g. 72.5" inputmode="decimal">
+                        <small class="form-hint">Weight must be between 20 and 300 kg.</small>
+                    </div>
+
+                    <!-- Height field.
+                         Accepts centimetres; JS divides by 100 to get metres for the
+                         BMI formula: BMI = weight_kg / (height_m)^2 -->
+                    <div class="form-group">
+                        <label for="bmiHeight">Height (cm)</label>
+                        <input type="number" id="bmiHeight" min="100" max="250" step="0.1" placeholder="e.g. 175" inputmode="decimal">
+                        <small class="form-hint">Height must be between 100 and 250 cm.</small>
+                    </div>
+
+                    <!-- Validation error banner.
+                         Text is written by validateBmiInputs() when a field is out of
+                         range or non-numeric, and cleared when inputs become valid.
+                         role="alert" + aria-live="polite" announces errors to screen readers. -->
+                    <div id="bmiInputError" class="bmi-error" role="alert" aria-live="polite"></div>
+
+                    <!-- Computed results readout — both spans are updated by setBmiState().
+                         #bmiValue  → the numeric score (e.g. "22.4") or "--" when inputs are empty.
+                         #bmiStatus → text category label; its CSS class swap drives the colour. -->
+                    <div class="bmi-metrics">
+                        <p><strong>BMI:</strong> <span id="bmiValue">--</span></p>
+                        <p><strong>Status:</strong> <span id="bmiStatus" class="bmi-status bmi-status-unknown"></span></p>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN — animated hologram body figure.
+                     setBmiState() swaps a single bmi-state-* class on #bmiHologram
+                     which CSS uses to change the figure's colour, body-width, and glow:
+                       bmi-state-unknown     → grey  / neutral shape
+                       bmi-state-underweight → amber / slim silhouette  (scaleX 0.9)
+                       bmi-state-healthy     → green / normal silhouette (scaleX 1.0)
+                       bmi-state-overweight  → red   / wide silhouette  (scaleX 1.13)
+                     aria-live="polite" lets assistive technology announce the state change. -->
+                <div class="bmi-visual-wrap">
+                    <div id="bmiHologram" class="bmi-hologram bmi-state-unknown" aria-live="polite">
+
+                        <!-- Animated horizontal scan line driven by a CSS keyframe -->
+                        <div class="holo-scan"></div>
+
+                        <!-- Stick-figure body composed of individual CSS-shaped spans.
+                             The scaleX transform on .holo-body widens/narrows the whole
+                             silhouette to visually reflect the current BMI category. -->
+                        <div class="holo-body">
+                            <span class="holo-head"></span>
+                            <span class="holo-torso"></span>
+                            <span class="holo-arm holo-arm-left"></span>
+                            <span class="holo-arm holo-arm-right"></span>
+                            <span class="holo-leg holo-leg-left"></span>
+                            <span class="holo-leg holo-leg-right"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account action buttons with backend access restrictions applied via `remaining_days`. -->
+        <div class="form-actions account-actions">
+            <form method="GET" action="{{ url_for('manage_addons') }}">
+                <button type="submit" class="btn-submit account-link-btn btn-secondary-action" {% if remaining_days > 0 %}disabled title="Manage memberships available when days reach 0"{% endif %}>
+                    <i class="fas fa-sliders-h"></i> Manage Memberships
+                </button>
+            </form>
+
+            <form method="POST" action="{{ url_for('cancel_membership') }}">
+                <button type="submit" class="btn-submit btn-logout">
+                    <i class="fas fa-ban"></i> Cancel Membership
+                </button>
+            </form>
+
+            <button type="button" class="btn-submit btn-logout js-delete-account-trigger">
+                <i class="fas fa-trash-alt"></i> Delete Account
+            </button>
+
+        </div>
+    </div>
+</section>
+
+<script>
+    // Read UTC ISO date strings injected by backend for cycle timing math.
+    const heroCard = document.querySelector('.account-hero');
+    const countdownCard = document.querySelector('.countdown-card');
+    const startDateValue = heroCard?.dataset.startDate || '';
+    const endDateValue = countdownCard?.dataset.endDate || '';
+
+    const startDate = startDateValue ? new Date(startDateValue + 'Z').getTime() : 0;
+    const endDate = endDateValue ? new Date(endDateValue + 'Z').getTime() : 0;
+
+    // Resolve key UI nodes used by countdown/progress logic.
+    const cdDays = document.getElementById('cdDays');
+    const cdHours = document.getElementById('cdHours');
+    const cdMinutes = document.getElementById('cdMinutes');
+    const cdSeconds = document.getElementById('cdSeconds');
+    const daysRemaining = document.getElementById('daysRemaining');
+    const ringProgress = document.getElementById('ringProgress');
+    // BMI calculator element references — used by updateBmi/validateBmiInputs/setBmiState.
+    const bmiWeightInput = document.getElementById('bmiWeight');   // weight <input>
+    const bmiHeightInput = document.getElementById('bmiHeight');   // height <input>
+    const bmiValue = document.getElementById('bmiValue');          // numeric score display
+    const bmiStatus = document.getElementById('bmiStatus');        // category label span
+    const bmiInputError = document.getElementById('bmiInputError');// validation error banner
+    const bmiHologram = document.getElementById('bmiHologram');    // hologram container div
+
+    // SVG ring circumference values for circular progress rendering.
+    const ringRadius = 50;
+    const ringCircumference = 2 * Math.PI * ringRadius;
+    if (ringProgress) {
+        ringProgress.style.strokeDasharray = String(ringCircumference);
+    }
+
+    // Countdown loop updates every second.
+    function updateCountdown() {
+        // Handle empty or missing end-date safely.
+        if (!endDate) {
+            cdDays.textContent = '0';
+            cdHours.textContent = '0';
+            cdMinutes.textContent = '0';
+            cdSeconds.textContent = '0';
+            daysRemaining.textContent = '0';
+            return;
+        }
+
+        // Remaining milliseconds to cycle end.
+        const now = Date.now();
+        const diff = endDate - now;
+
+        // Expired state handling.
+        if (diff <= 0) {
+            cdDays.textContent = '0';
+            cdHours.textContent = '0';
+            cdMinutes.textContent = '0';
+            cdSeconds.textContent = '0';
+            daysRemaining.textContent = '0';
+            return;
+        }
+
+        // Derive day/hour/minute/second units for display.
+        const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const m = Math.floor((diff / (1000 * 60)) % 60);
+        const s = Math.floor((diff / 1000) % 60);
+
+        cdDays.textContent = String(d);
+        cdHours.textContent = String(h).padStart(2, '0');
+        cdMinutes.textContent = String(m).padStart(2, '0');
+        cdSeconds.textContent = String(s).padStart(2, '0');
+        daysRemaining.textContent = String(d);
+
+        if (startDate && endDate > startDate && ringProgress) {
+            const totalCycle = endDate - startDate;
+            const elapsed = Math.max(0, Math.min(totalCycle, now - startDate));
+            const percent = (elapsed / totalCycle) * 100;
+            const progressOffset = ringCircumference - (Math.max(0, Math.min(100, percent)) / 100) * ringCircumference;
+            ringProgress.style.strokeDashoffset = String(progressOffset);
+        }
+    }
+
+    // Initialize immediately, then refresh once per second.
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+
+    /**
+     * setBmiState(category, bmiNumber)
+     *
+     * Central UI update function — called by updateBmi() after every valid
+     * input event to reflect the current BMI result across three elements:
+     *   - #bmiValue    → the numeric score display
+     *   - #bmiStatus   → the category label + its colour class
+     *   - #bmiHologram → the hologram figure's state class (drives CSS shape/colour)
+     *
+     * @param {string} category   '' | 'underweight' | 'healthy' | 'overweight'
+     *                            Pass '' to reset everything back to neutral.
+     * @param {number} bmiNumber  Raw BMI float; formatted to 1 decimal place for display.
+     */
+    function setBmiState(category, bmiNumber) {
+        // Always clear all state classes first so only one is active at a time.
+        bmiHologram.classList.remove('bmi-state-unknown', 'bmi-state-underweight', 'bmi-state-healthy', 'bmi-state-overweight');
+
+        // Empty category means inputs are blank or invalid — reset to neutral state.
+        if (!category) {
+            bmiValue.textContent = '--';
+            bmiStatus.textContent = '';
+            bmiStatus.className = 'bmi-status bmi-status-unknown';
+            bmiHologram.classList.add('bmi-state-unknown');
+            return;
+        }
+
+        // Write the numeric BMI score (1 decimal place) into the readout span.
+        bmiValue.textContent = bmiNumber.toFixed(1);
+
+        // BMI < 18.5 — Underweight: amber hologram, slim silhouette (scaleX 0.9 in CSS).
+        if (category === 'underweight') {
+            bmiStatus.textContent = 'Underweight';
+            bmiStatus.className = 'bmi-status bmi-status-underweight';
+            bmiHologram.classList.add('bmi-state-underweight');
+            return;
+        }
+
+        // 18.5 ≤ BMI ≤ 24.9 — Healthy: green hologram, normal silhouette (scaleX 1.0).
+        if (category === 'healthy') {
+            bmiStatus.textContent = 'Healthy';
+            bmiStatus.className = 'bmi-status bmi-status-healthy';
+            bmiHologram.classList.add('bmi-state-healthy');
+            return;
+        }
+
+        // BMI > 24.9 — Overweight: red hologram, wide silhouette (scaleX 1.13).
+        bmiStatus.textContent = 'Overweight';
+        bmiStatus.className = 'bmi-status bmi-status-overweight';
+        bmiHologram.classList.add('bmi-state-overweight');
+    }
+
+    /**
+     * validateBmiInputs(weight, heightCm)
+     *
+     * Pure validation function — no DOM side-effects.
+     * Returns a human-readable error string when an input is unacceptable,
+     * or an empty string '' when both fields pass all checks.
+     *
+     * Rules (mirror the HTML min/max attributes as a second safety layer):
+     *   weight  → finite number in [20, 300] kg
+     *   height  → finite number in [100, 250] cm
+     *
+     * Number.isFinite() guards against NaN (returned by parseFloat on an empty
+     * or non-numeric string) and Infinity, both of which would otherwise pass
+     * a simple < / > range check and produce a nonsense BMI result.
+     */
+    function validateBmiInputs(weight, heightCm) {
+        // Reject non-numeric weight (parseFloat returns NaN for empty/text fields).
+        if (!Number.isFinite(weight)) {
+            return 'Please enter your weight in kilograms.';
+        }
+        // Reject weight outside the physiologically plausible range.
+        if (weight < 20 || weight > 300) {
+            return 'Weight must be between 20 and 300 kg.';
+        }
+        // Reject non-numeric height.
+        if (!Number.isFinite(heightCm)) {
+            return 'Please enter your height in centimeters.';
+        }
+        // Reject height outside the plausible range.
+        if (heightCm < 100 || heightCm > 250) {
+            return 'Height must be between 100 and 250 cm.';
+        }
+        // All checks passed — inputs are safe to compute BMI with.
+        return '';
+    }
+
+    /**
+     * updateBmi()
+     *
+     * Main orchestrator for the BMI calculator. Fired on every 'input' event
+     * from either the weight or height field (see event listeners below).
+     *
+     * Flow:
+     *  1. Parse both fields as floats (empty string → NaN, handled downstream).
+     *  2. If BOTH fields are empty, silently clear any error and reset the UI —
+     *     no error message shown when the user hasn't typed anything yet.
+     *  3. Run validateBmiInputs(); if it returns an error string, show it in
+     *     the error banner and reset the hologram to neutral, then stop.
+     *  4. Clear the error banner (previous error no longer applies).
+     *  5. Compute BMI using the standard formula: weight / (height_m)^2.
+     *  6. Classify the result and hand off to setBmiState() with the category.
+     *
+     * WHO-aligned BMI thresholds used:
+     *   BMI < 18.5           → 'underweight'
+     *   18.5 ≤ BMI ≤ 24.9   → 'healthy'
+     *   BMI > 24.9           → 'overweight'
+     */
+    function updateBmi() {
+        // Step 1: parse inputs; trim whitespace first to avoid parseFloat quirks.
+        const weight = parseFloat((bmiWeightInput.value || '').trim());
+        const heightCm = parseFloat((bmiHeightInput.value || '').trim());
+
+        // Step 2: both blank → clear silently and reset (no validation message needed).
+        if (!bmiWeightInput.value && !bmiHeightInput.value) {
+            bmiInputError.textContent = '';
+            setBmiState('', 0);
+            return;
+        }
+
+        // Step 3: validate; show error and reset hologram if anything is wrong.
+        const validationError = validateBmiInputs(weight, heightCm);
+        if (validationError) {
+            bmiInputError.textContent = validationError;
+            setBmiState('', 0);
+            return;
+        }
+
+        // Step 4: inputs are valid — clear any previous error message.
+        bmiInputError.textContent = '';
+
+        // Step 5: compute BMI (convert height from cm → m before squaring).
+        const heightM = heightCm / 100;
+        const bmi = weight / (heightM * heightM);
+
+        // Step 6: classify and update the UI.
+        if (bmi < 18.5) {
+            setBmiState('underweight', bmi);
+            return;
+        }
+        if (bmi <= 24.9) {
+            setBmiState('healthy', bmi);
+            return;
+        }
+        setBmiState('overweight', bmi);
+    }
+
+    // Attach listeners to both inputs — recalculate on every keystroke.
+    // Optional chaining (?.) prevents errors if the BMI section is ever removed.
+    bmiWeightInput?.addEventListener('input', updateBmi);
+    bmiHeightInput?.addEventListener('input', updateBmi);
+</script>
+{% endblock %}

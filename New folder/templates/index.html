@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Premium Fitness Experience{% endblock %}
+
+{% block content %}
+<!--
+Home page template.
+Purpose: introduce both gyms, explain value proposition, and drive users to the calculator flow.
+This page is mostly static marketing content with navigation links into the signup funnel.
+-->
+
+<!-- Hero section: first screen CTA and quick site framing. -->
+<section class="hero">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+        <div class="hero-text" data-aos="fade-up">
+            <h1 class="hero-title">
+                TRANSFORM YOUR
+                <span class="highlight">BODY & MIND</span>
+            </h1>
+            <p class="hero-subtitle">
+                Two premium gyms. One goal: Your success.<br>
+                Find the perfect membership plan for your fitness journey.
+            </p>
+            <div class="hero-buttons">
+                {% if not session.get('user_id') %}
+                <a href="{{ url_for('calculate') }}" class="btn btn-primary btn-large">
+                    <i class="fas fa-rocket"></i> Get Started Now
+                </a>
+                {% endif %}
+                <a href="#features" class="btn btn-outline btn-large">
+                    <i class="fas fa-info-circle"></i> Learn More
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!--
+Feature/story section:
+- Brand narrative
+- Gym image gallery
+- Side-by-side gym positioning
+- Quick comparison table
+- Benefits and CTA
+-->
+<section class="about-home features-section" id="features">
+    <div class="container">
+        <!-- Intro copy for the comparison narrative. -->
+        <div class="about-home-intro section-header">
+           
+            <h2 class="section-title">uGym and Power Zone, built for different training styles with the same goal: your progress.</h2>
+            <p class="section-subtitle">
+                Two premium gyms, and two commitments: your health and your fitness success.
+                Scroll through the details below to compare the atmosphere, pricing, and benefits before you choose a membership.
+            </p>
+        </div>
+
+        <!-- Brand story and visual gallery strip. -->
+        <div class="gym-story">
+            <div class="gym-story-copy">
+                <h3>Who We Are</h3>
+                <p>
+                    We proudly manage two high-quality gyms, <strong>uGym</strong> and <strong>Power Zone</strong>.
+                    Each offers a different environment and atmosphere, but both share one commitment: delivering strong equipment,
+                    expert support, and a community that helps you train smarter, push further, and reach your goals.
+                </p>
+            </div>
+
+            <div class="gym-gallery">
+                <p class="gallery-prompt">Scroll to explore our facilities</p>
+                <div class="gallery-scroll">
+                    <img src="{{ url_for('static', filename='GymPic2.jpg') }}" alt="Gym physiotherapy" class="gallery-img">
+                    <img src="{{ url_for('static', filename='GymPic1.jpg') }}" alt="Gym training" class="gallery-img">
+                    <img src="{{ url_for('static', filename='GymPic3.jpg') }}" alt="Fitness swimming pool" class="gallery-img">
+                    <img src="{{ url_for('static', filename='GymPic4.jpg') }}" alt="Massage" class="gallery-img">
+                    <img src="{{ url_for('static', filename='GymPic5.jpg') }}" alt="Group fitness class" class="gallery-img">
+                    <img src="{{ url_for('static', filename='GymPic6.jpg') }}" alt="Gym interior" class="gallery-img">
+                </div>
+            </div>
+        </div>
+
+        <!-- Two-card comparison narrative (positioning, audience, vibe). -->
+        <div class="gym-cards gyms-grid">
+            <article class="gym-card gym-card-ugym">
+                <img src="{{ url_for('static', filename='uGym.avif') }}" alt="uGym community training" class="gym-card-image">
+                <div class="gym-card-body">
+                    <div class="gym-badge"><i class="fas fa-users"></i> Community Focused</div>
+                    <h3 class="gym-card-title"><i class="fas fa-dumbbell"></i> uGym</h3>
+                    <p class="gym-card-description">
+                        uGym is built for people who prefer training with energy around them, staying connected, and joining dynamic sessions.
+                        It suits students and younger members who want flexibility, motivation, and a social training atmosphere.
+                    </p>
+                    <ul class="gym-features">
+                        <li><i class="fas fa-clock"></i> Opening Hours: Mon-Fri 10 AM-9 PM</li>
+                        <li><i class="fas fa-tag"></i> Joining Fee: £10</li>
+                    </ul>
+                </div>
+            </article>
+
+            <article class="gym-card gym-card-power">
+                <img src="{{ url_for('static', filename='PowerZone.jpg') }}" alt="Power Zone strength training" class="gym-card-image">
+                <div class="gym-card-body">
+                    <div class="gym-badge gym-badge-power"><i class="fas fa-bolt"></i> Performance Focused</div>
+                    <h3 class="gym-card-title"><i class="fas fa-bolt"></i> Power Zone</h3>
+                    <p class="gym-card-description">
+                        Power Zone is designed for members who want to build strength and endurance in a more focused environment.
+                        It supports high-intensity training, disciplined routines, and performance-driven gym sessions.
+                    </p>
+                    <ul class="gym-features">
+                        <li><i class="fas fa-clock"></i> Opening Hours: Mon-Fri 10 AM-9 PM</li>
+                        <li><i class="fas fa-tag"></i> Joining Fee: £30</li>
+                    </ul>
+                </div>
+            </article>
+        </div>
+
+        <!-- Trust and value proposition cards. -->
+        <div class="why-us">
+            <div class="section-heading">
+                <h3>Why You Should Choose Us</h3>
+            </div>
+            <div class="benefit-grid">
+                <div class="benefit-card">
+                    <i class="fas fa-calculator"></i>
+                    <h4>Smart Calculator</h4>
+                    <p>Compare memberships based on your age, student status, and preferred extras before you commit.</p>
+                </div>
+                <div class="benefit-card">
+                    <i class="fas fa-dumbbell"></i>
+                    <h4>High-Quality Equipment</h4>
+                    <p>Train with strong facilities, practical add-ons, and membership options that fit your routine.</p>
+                </div>
+                <div class="benefit-card">
+                    <i class="fas fa-user-shield"></i>
+                    <h4>Supportive Training Experience</h4>
+                    <p>Choose a gym atmosphere that matches your style, whether you want community energy or focused performance.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="location-section">
+            <div class="section-heading">
+                <h3>Find Us</h3>
+                <p>Explore two real Gym 4 U locations in Bristol and choose the one that fits your routine best.</p>
+            </div>
+
+            <div class="location-layout">
+                <article class="location-card">
+                    <div class="location-copy">
+                        <div class="location-badge"><i class="fas fa-location-dot"></i> Bristol Filton</div>
+                        <h4>uGym Bristol Filton</h4>
+                        <p>Unit 3, Foxden Road, East Filton, Bristol, BS34 8SP</p>
+                        <p>Great if you want a north Bristol option with pool access, classes, and easy parking.</p>
+                        <a href="https://www.google.com/maps/search/?api=1&query=Unit+3+Foxden+Road+East+Filton+Bristol+BS34+8SP" target="_blank" rel="noopener noreferrer" class="about-cta-link">
+                            <i class="fas fa-map"></i> Open Filton Map
+                        </a>
+                    </div>
+
+                    <div class="location-map-wrap">
+                        <iframe
+                            class="location-map"
+                            title="uGym Bristol Filton map"
+                            src="https://www.google.com/maps?q=Unit+3+Foxden+Road+East+Filton+Bristol+BS34+8SP&output=embed"
+                            loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade"
+                            allowfullscreen>
+                        </iframe>
+                    </div>
+                </article>
+
+                <article class="location-card">
+                    <div class="location-copy">
+                        <div class="location-badge"><i class="fas fa-location-dot"></i> Bristol Imperial</div>
+                        <h4>PowerZone Bristol Imperial</h4>
+                        <p>Imperial Retail Park, Bristol, BS13 7TJ</p>
+                        <p>A strong south Bristol option for members who want a full gym setup with swimming and group training.</p>
+                        <a href="https://www.google.com/maps/search/?api=1&query=Imperial+Retail+Park+Bristol+BS13+7TJ" target="_blank" rel="noopener noreferrer" class="about-cta-link">
+                            <i class="fas fa-map"></i> Open Imperial Map
+                        </a>
+                    </div>
+
+                    <div class="location-map-wrap">
+                        <iframe
+                            class="location-map"
+                            title="PowerZone Bristol Imperial map"
+                            src="https://www.google.com/maps?q=Imperial+Retail+Park+Bristol+BS13+7TJ&output=embed"
+                            loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade"
+                            allowfullscreen>
+                        </iframe>
+                    </div>
+                </article>
+            </div>
+        </div>
+
+        <!-- Final conversion CTA to calculator route. -->
+        {% if not session.get('user_id') %}
+        <div class="about-cta">
+            <h3>Ready to Start Your Journey With Us?</h3>
+            <p>Use our smart calculator to discover which gym gives you the best value for your needs.</p>
+            <a href="{{ url_for('calculate') }}" class="about-cta-link">
+                <i class="fas fa-arrow-right"></i> Go To Calculator
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+{% endblock %}

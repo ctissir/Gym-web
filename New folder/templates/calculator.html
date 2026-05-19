@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+
+{% block title %}Membership Calculator - Find Your Perfect Plan{% endblock %}
+
+{% block content %}
+<!--
+Calculator page template.
+Purpose: collect membership preferences, validate basic inputs, and submit to `/calculator`
+to compute and compare prices for uGym vs Power Zone.
+-->
+<div class="calculator-container join-now-page">
+    <h1>Explore Our Memberships</h1>
+    <p>Compare plans first. We only ask for your name and email after you choose the option you want to pay for.</p>
+        <!--
+        Main comparison form.
+        Data posted:
+        - age
+        - is_student
+        - gym_type
+        - addons[]
+        - action (submit intent)
+        -->
+    <form id="calculatorForm" method="POST" action="{{ url_for('calculate') }}" novalidate>
+
+            <!--
+            Server-side messages:
+            - flashed alerts (e.g., age restriction)
+            - direct route error variable
+            -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }}" data-aos="shake">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>{{ message }}</span>
+            </div>
+            {% endfor %}
+            {% endwith %}
+            {% if error %}
+            <div class="alert alert-error" data-aos="shake">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>{{ error }}</span>
+            </div>
+            {% endif %}
+        <div class="form-group">
+            <!-- Age input with HTML constraints. Server also validates this. -->
+            <label for="age">Age:</label>
+            <input type="number" id="age" name="age"  min="16" max="120" required>
+            <small class="form-hint">You need to be at least 16 years old to join our gyms.</small>
+        </div>
+        <div class="form-group">
+        <label class="form-label">
+            <!-- Student flag: used by backend discount status logic. -->
+           <i class="fas fa-graduation-cap"></i> Student 
+       </label>
+
+        <label class="checkbox-inline">
+            <input type="checkbox" name="is_student" value="1">
+                  I am a student (apply student discount)
+         </label>
+        </div>
+  
+                <!-- Membership selection area. -->
+                    <h3 class="form-section-title">
+                        <i class="fas fa-dumbbell"></i> Our Membership Plans
+                    </h3>
+
+                    <!-- Gym access radio group: only one tier can be selected. -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-clock"></i> Gym Access
+                        </label>
+                        <div class="radio-grid">
+                            <label class="radio-card">
+                            <!-- Super off-peak option. -->
+                                <input type="radio" name="gym_type" value="Gym: Super-off peak" required>
+                                <div class="radio-card-content">
+                                    <div class="radio-card-icon">
+                                        <i class="fas fa-sun"></i>
+                                    </div>
+                                        <!-- Marketing copy for this tier. -->
+                                    <div class="radio-card-title">Super Off-Peak</div>
+                                    <div class="radio-card-description">10am-12pm & 2pm-4pm</div>
+                                    <div class="radio-card-price">
+                                        <span class="price-ugym">uGym: £16</span>
+                                        <span class="price-power">Power: £13</span>
+                                    </div>
+                                </div>
+                            </label>
+
+                            <!-- Option 2: Off-Peak membership (limited time windows, mid-range price) -->
+                            <label class="radio-card">
+                                <input type="radio" name="gym_type" value="Gym: Off-peak" required>
+                                <div class="radio-card-content">
+                                    <div class="radio-card-icon">
+                                        <i class="fas fa-cloud-sun"></i>
+                                    </div>
+                                    <div class="radio-card-title">Off-Peak</div>
+                                    <div class="radio-card-description">12pm-2pm & 8pm-11pm</div>
+                                    <div class="radio-card-price">
+                                        <span class="price-ugym">uGym: £21</span>
+                                        <span class="price-power">Power: £19</span>
+                                    </div>
+                                </div>
+                            </label>
+
+                            <!-- Option 3: Anytime membership (full 24/7 access, highest price) -->
+                            <label class="radio-card">
+                                <!-- Anytime option posted as gym_type value. -->
+                                <input type="radio" name="gym_type" value="Gym: Anytime" required>
+                                <div class="radio-card-content">
+                                    <div class="radio-card-icon">
+                                        <i class="fas fa-infinity"></i>
+                                    </div>
+                               
+                                    <div class="radio-card-title">Anytime</div>
+                                    <div class="radio-card-description">24/7 Access</div>
+                                    <div class="radio-card-price">
+                                        <!-- Displayed baseline prices for each gym. -->
+                                        <span class="price-ugym">uGym: £30</span>
+                                        <span class="price-power">Power: £24</span>
+                                    </div>
+                                </div>
+                            </label>
+
+                            <!-- Option 4: No gym access (used when user wants only add-ons) -->
+                            <label class="radio-card">
+                                <input type="radio" name="gym_type" value="none">
+                                <div class="radio-card-content">
+                                    <div class="radio-card-icon">
+                                        <i class="fas fa-times-circle"></i>
+                                    </div>
+                                    <!-- No gym access selected -->
+                                    <div class="radio-card-title">No Gym Access</div>
+                                    <div class="radio-card-description">Add-ons only</div>
+                                    <div class="radio-card-price">
+                                        <span class="price-note">Select add-ons below</span>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    <!-- Add-ons group: multiple selections allowed. -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-plus-circle"></i> Additional Services (Optional)
+                        </label>
+                        <div class="checkbox-grid">
+                            <label class="checkbox-card">
+                                <!-- Swimming pool add-on. -->
+                                <input type="checkbox" name="addons" value="Swimming Pool">
+                                <div class="checkbox-card-content">
+                                    <div class="checkbox-card-icon">
+                                        <i class="fas fa-swimming-pool"></i>
+                                    </div>
+                                    <div class="checkbox-card-title">Swimming Pool</div>
+                                    <div class="checkbox-card-image">
+                                        <img src="{{ url_for('static', filename='Swimming-pool.jpg') }}" alt="Swimming Pool">
+                                    </div>
+                                    <div class="checkbox-card-pricing">
+                                        <div class="pricing-row">
+                                            <span>Without gym:</span>
+                                            <span>uGym £25 | Power £20</span>
+                                        </div>
+                                        <div class="pricing-row">
+                                            <span>With gym:</span>
+                                            <span>+£15 | +£12.5</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+
+                            <label class="checkbox-card">
+                                <!-- Group classes add-on. -->
+                                <input type="checkbox" name="addons" value="Classes">
+                                <div class="checkbox-card-content">
+                                    <div class="checkbox-card-icon">
+                                        <i class="fas fa-users"></i>
+                                    </div>
+                                    <!-- Add-on label for card title. -->
+                                    <div class="checkbox-card-title">Group Classes</div>
+                                    <div class="checkbox-card-image">
+                                        <img src="{{ url_for('static', filename='GroupClasses.jpg') }}" alt="Group Classes">
+                                    </div>
+                                    <div class="checkbox-card-pricing">
+                                        <div class="pricing-row">
+                                            <span>Without gym:</span>
+                                            <span>uGym £20 | Power £20</span>
+                                        </div>
+                                        <div class="pricing-row highlight-free">
+                                            <span>With gym:</span>
+                                            <span>+£10 | <strong>FREE!</strong></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+
+                            <label class="checkbox-card">
+                                <input type="checkbox" name="addons" value="Massage">
+                                <div class="checkbox-card-content">
+                                    <div class="checkbox-card-icon">
+                                        <i class="fas fa-spa"></i>
+                                    </div>
+                                    <div class="checkbox-card-title">Massage</div>
+                                    <div class="checkbox-card-image">
+                                        <!-- Visual cue for massage service. -->
+                                        <img src="{{ url_for('static', filename='MassageTherapy.jpeg') }}" alt="Massage">
+                                    </div>
+                                    <div class="checkbox-card-pricing">
+                                        <div class="pricing-row">
+                                            <span>Without gym:</span>
+                                            <span>Both £30</span>
+                                        </div>
+                                        <div class="pricing-row no-discount">
+                                            <span>With gym:</span>
+                                            <span>+£25 (no discount)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+
+                            <label class="checkbox-card">
+                                <input type="checkbox" name="addons" value="Physiotherapy">
+                                <div class="checkbox-card-content">
+                                    <div class="checkbox-card-icon">
+                                        <i class="fas fa-heartbeat"></i>
+                                    </div>
+                                    <!-- Add-on label for card title. -->
+                                    <div class="checkbox-card-title">Physiotherapy</div>
+                                    <!-- Visual cue for physiotherapy service. -->
+                                    <div class="checkbox-card-image">
+                                        <img src="{{ url_for('static', filename='Physiotherapy.jpg') }}" alt="Physiotherapy">
+                                    </div>
+                                    <!-- Price examples with/without gym. -->
+                                    <div class="checkbox-card-pricing">
+                                        <div class="pricing-row">
+                                            <span>Without gym:</span>
+                                            <span>uGym £25 | Power £30</span>
+                                        </div>
+                                        <div class="pricing-row no-discount">
+                                            <span>With gym:</span>
+                                            <span>+£20 | +£25 (no discount)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                <!-- Submit button posts action=compare for results rendering. -->
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-large btn-submit" name="action" value="compare">
+                        <i class="fas fa-chart-line"></i> Compare Gyms & See Results
+                    </button>
+                   
+                </div>
+</form>
+
+
+
+
+
+
+<script>
+    // Client-side guardrails for better UX before server-side validation.
+    const calculatorForm = document.getElementById('calculatorForm');
+
+    function showInlineError(message) {
+        // Ensure only one JS-generated error is shown at a time.
+        document.querySelectorAll('.alert-js-error').forEach(el => el.remove());
+        const div = document.createElement('div');
+        div.className = 'alert alert-error alert-js-error';
+        div.setAttribute('data-aos', 'shake');
+        div.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <span>' + message + '</span>';
+        const form = document.getElementById('calculatorForm');
+        form.insertBefore(div, form.firstChild);
+        div.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    if (calculatorForm) {
+        calculatorForm.addEventListener('submit', function(e) {
+            // Pull current field values for validation checks.
+            const age = parseInt(document.getElementById('age').value, 10);
+            const gymType = document.querySelector('input[name="gym_type"]:checked');
+            const addons = document.querySelectorAll('input[name="addons"]:checked');
+
+            // Mirror backend minimum age rule.
+            if (!Number.isFinite(age) || age < 16) {
+                e.preventDefault();
+                showInlineError('Sorry, you must be at least 16 years old to join our gyms.');
+                return;
+            }
+
+            // Prevent submit if user selected "No Gym Access" without any add-on.
+            if (gymType && gymType.value === 'none' && addons.length === 0) {
+                e.preventDefault();
+                showInlineError('Please select at least one add-on service or choose a gym membership.');
+                return;
+            }
+
+            // Provide immediate visual feedback while request is processing.
+            const submitter = e.submitter || this.querySelector('button[type="submit"]');
+            if (submitter) {
+                submitter.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                submitter.disabled = true;
+            }
+        });
+    }
+</script>
+{% endblock %}

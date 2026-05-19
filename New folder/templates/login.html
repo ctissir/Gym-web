@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Gym 4 U{% endblock %}
+
+{% block content %}
+<!--
+Login template.
+Purpose: authenticate existing members and route them to their account dashboard.
+-->
+<div class="calculator-container no-card login-page">
+    <h1>Login To Your Account</h1>
+    <p>Enter your email and password to view your subscription status.</p>
+
+    <!-- Credentials form posts to `/login`. -->
+    <form method="POST" action="{{ url_for('login') }}" novalidate>
+        {% if error %}
+        <!-- Login error displayed when email/password validation fails. -->
+        <div class="alert alert-error">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" value="{{ email or '' }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+
+        <div class="form-actions">
+            <!-- Submits login credentials to backend route. -->
+            <button type="submit" class="btn-submit">
+                <i class="fas fa-sign-in-alt"></i> Log In
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

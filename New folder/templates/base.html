@@ -1,0 +1,276 @@
+<!-- Base template : all the other templates will inherit common features from this base file like :nav-bar, footer..etc-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+          integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W=="
+          crossorigin="anonymous" referrerpolicy="no-referrer">
+    <title>{% block title %}Gym 4 U{% endblock %}</title>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar" id="navbar">
+        <div class="container nav-container">
+            <div class="logo">
+                <i class="fas fa-dumbbell"></i>
+                <span class="logo-text">
+                    <span class="logo-main">GYM</span>
+                </span>
+            </div>
+            
+            <button class="nav-toggle" id="navToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            
+            <ul class="nav-menu" id="navMenu">
+                <!---href is the link destination, the href attribute specifies the URL of the page the link goes to -->
+                <li><a href="{{ url_for('home') }}" class="nav-link {% if request.endpoint == 'home' %}active{% endif %}">
+                    <i class="fas fa-home"></i> Home
+                </a></li>
+                {% if not session.get('user_id') %}
+                <li><a href="{{ url_for('calculate') }}" class="nav-link {% if request.endpoint == 'calculate' %}active{% endif %}">
+                    <i class="fas fa-calculator"></i> Join Now
+                </a></li>
+                {% endif %}
+                {% if session.get('user_id') %}
+                <li class="nav-dropdown">
+                    <button type="button" class="nav-link nav-dropdown-toggle" id="accountToggle">
+                        <span class="nav-dropdown-label">Account</span>
+                    </button>
+                    <div class="nav-dropdown-menu" id="accountMenu">
+                        <a href="{{ url_for('account') }}" class="nav-dropdown-item {% if request.endpoint == 'account' %}active{% endif %}">
+                            <i class="fas fa-user"></i> Account
+                        </a>
+                        <a href="{{ url_for('logout') }}" class="nav-dropdown-item">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
+                        <button type="button" class="nav-dropdown-button nav-dropdown-danger js-delete-account-trigger">
+                            <i class="fas fa-trash-alt"></i> Delete Account
+                        </button>
+                    </div>
+                </li>
+                {% else %}
+                <li><a href="{{ url_for('login') }}" class="nav-link {% if request.endpoint == 'login' %}active{% endif %}">
+                    <i class="fas fa-user"></i> Login
+                </a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <footer class="Gymfooter">
+        <div class="container footergroup">
+            <div class="footerBox">
+                <h3><i class="fas fa-address-card"></i> Contact</h3>
+                <p><i class="fas fa-envelope"></i> Email: <a href="mailto:gymserviceinfo@gmail.com">gymserviceinfo@gmail.com</a></p>
+                <p><i class="fas fa-phone"></i> Phone: +44 123 456 7890</p>
+                <p><i class="fas fa-location-dot"></i> Locations: uGym Bristol Filton and PowerZone Bristol Imperial</p>
+            </div>
+
+            <div class="footerBox">
+                <h3><i class="fas fa-hashtag"></i> Follow Us On</h3>
+                <p><a href="#"><i class="fab fa-instagram"></i> Instagram</a></p>
+                <p><a href="#"><i class="fab fa-facebook"></i> Facebook</a></p>
+                <p><a href="#"><i class="fab fa-tiktok"></i> TikTok</a></p>
+            </div>
+
+        </div>
+
+        <div class="footercopyright">
+            <p>&copy; uGym and PowerZone (2026). All rights reserved.</p>
+        </div>
+    </footer>
+    
+    <script>
+        // =========================
+        // Mobile / hamburger menu
+        // =========================
+        // These two elements are the small menu button and the hidden/visible menu list.
+        // We grab them once so we can attach click behavior below.
+        const navToggle = document.getElementById('navToggle');
+        const navMenu   = document.getElementById('navMenu');
+
+        // Only run this block if both elements exist on the page.
+        // This keeps the script safe even if a future page layout changes.
+        if (navToggle && navMenu) {
+            // When the hamburger button is clicked, toggle the `active` class on the menu.
+            // CSS uses that class to show or hide the mobile navigation.
+            navToggle.addEventListener('click', () => {
+                navMenu.classList.toggle('active');  
+            });
+
+            // If the user clicks anywhere outside the button and outside the menu,
+            // close the menu. This prevents the mobile menu from staying open after
+            // the user taps somewhere else on the page.
+            document.addEventListener('click', (e) => {
+                if (!navToggle.contains(e.target) && !navMenu.contains(e.target)) {
+                    navMenu.classList.remove('active');
+                }
+            });
+        }
+
+        // =========================
+        // Navbar scroll effect
+        // =========================
+        // The navbar gets a different style once the page is scrolled down slightly.
+        // Example: CSS might change its background, shadow, or compactness.
+        const navbar = document.getElementById('navbar');
+        if (navbar) {
+            // Listen for scroll and add/remove the `scrolled` class.
+            // If the page is more than 20px down, the class is added.
+            // `{ passive: true }` tells the browser this listener will not call
+            // preventDefault, which helps scrolling stay smooth.
+            window.addEventListener('scroll', () => {
+                navbar.classList.toggle('scrolled', window.scrollY > 20);
+            }, { passive: true });
+        }
+
+        // =========================
+        // Account dropdown menu
+        // =========================
+        // These exist only when a user is logged in.
+        // `accountToggle` is the button in the navbar.
+        // `accountMenu` is the dropdown panel containing Account / Logout / Delete.
+        const accountToggle = document.getElementById('accountToggle');
+        const accountMenu = document.getElementById('accountMenu');
+        if (accountToggle && accountMenu) {
+            // Open or close the dropdown when the Account button is clicked.
+            // `stopPropagation()` prevents this click from also reaching the
+            // document-level click handler below, which would immediately close it again.
+            accountToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                accountMenu.classList.toggle('open');
+            });
+
+            // Close the dropdown when the user clicks anywhere outside it.
+            // This creates the normal "click outside to dismiss" behavior.
+            document.addEventListener('click', (e) => {
+                if (!accountToggle.contains(e.target) && 
+                    !accountMenu.contains(e.target)) {
+                    accountMenu.classList.remove('open');
+                }
+            });
+        }
+
+        // =========================
+        // Delete-account modal logic
+        // =========================
+        // Wait until the HTML is fully loaded before querying modal buttons and wiring events.
+        // This is important because the modal markup appears later in the page.
+        document.addEventListener('DOMContentLoaded', () => {
+            // Any element with this class should open the delete-account modal.
+            // There can be more than one trigger in the UI, so we query them all.
+            const deleteAccountTriggers = document.querySelectorAll('.js-delete-account-trigger');
+
+            // Modal elements:
+            // - overlay container
+            // - close button (X)
+            // - cancel button
+            // - confirm delete button
+            // - hidden form that actually sends the delete request to Flask
+            const deleteAccountModal = document.getElementById('deleteAccountModal');
+            const closeDeleteModalBtn = document.getElementById('closeDeleteModalBtn');
+            const cancelDeleteModalBtn = document.getElementById('cancelDeleteModalBtn');
+            const confirmDeleteModalBtn = document.getElementById('confirmDeleteModalBtn');
+            const deleteAccountForm = document.getElementById('deleteAccountForm');
+
+            // Open the modal by adding the CSS class that makes it visible.
+            // We also add `modal-open` to the body so CSS can disable background scroll
+            // or apply page-level modal styling if needed.
+            function openDeleteAccountModal() {
+                if (!deleteAccountModal) {
+                    return;
+                }
+                deleteAccountModal.classList.add('open');
+                document.body.classList.add('modal-open');
+
+                // If the account dropdown is open when the modal is launched,
+                // close it so only one layered UI element is visible at a time.
+                if (accountMenu) {
+                    accountMenu.classList.remove('open');
+                }
+            }
+
+            // Close the modal and remove the body helper class.
+            function closeDeleteAccountModal() {
+                if (!deleteAccountModal) {
+                    return;
+                }
+                deleteAccountModal.classList.remove('open');
+                document.body.classList.remove('modal-open');
+            }
+
+            // Attach open behavior to every delete-account trigger.
+            // `preventDefault()` stops any default button/link action before the modal opens.
+            deleteAccountTriggers.forEach((trigger) => {
+                trigger.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    openDeleteAccountModal();
+                });
+            });
+
+            // Clicking the X button closes the modal.
+            if (closeDeleteModalBtn) {
+                closeDeleteModalBtn.addEventListener('click', closeDeleteAccountModal);
+            }
+
+            // Clicking "Keep Account" also closes the modal.
+            if (cancelDeleteModalBtn) {
+                cancelDeleteModalBtn.addEventListener('click', closeDeleteAccountModal);
+            }
+
+            // If the user clicks the dark overlay area outside the modal box,
+            // close the modal. We compare `e.target` to the overlay itself so
+            // clicks inside the modal content do not close it accidentally.
+            if (deleteAccountModal) {
+                deleteAccountModal.addEventListener('click', (e) => {
+                    if (e.target === deleteAccountModal) {
+                        closeDeleteAccountModal();
+                    }
+                });
+            }
+
+            // Clicking the final danger button submits the hidden POST form.
+            // The hidden form is what actually calls the Flask `delete_account` route.
+            // We use a form submit here instead of navigating by link because deleting
+            // data should happen through POST, not GET.
+            if (confirmDeleteModalBtn && deleteAccountForm) {
+                confirmDeleteModalBtn.addEventListener('click', () => {
+                    deleteAccountForm.submit();
+                });
+            }
+        });
+
+    </script>
+
+    {% if session.get('user_id') %}
+    <div id="deleteAccountModal" class="delete-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="deleteAccountModalTitle">
+        <div class="delete-modal-content">
+            <button type="button" class="delete-modal-close" id="closeDeleteModalBtn" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="delete-modal-icon">
+                <i class="fas fa-triangle-exclamation"></i>
+            </div>
+            <h3 id="deleteAccountModalTitle" class="delete-modal-title">Delete Account?</h3>
+            <p class="delete-modal-text">Are you sure you want to delete your account?</p>
+            <p class="delete-modal-warning">This will also cancel all your memberships and cannot be undone.</p>
+            <div class="delete-modal-actions">
+                <button type="button" class="delete-modal-btn delete-modal-btn-secondary" id="cancelDeleteModalBtn">Keep Account</button>
+                <button type="button" class="delete-modal-btn delete-modal-btn-danger" id="confirmDeleteModalBtn">Delete Account</button>
+            </div>
+        </div>
+    </div>
+    <form id="deleteAccountForm" method="POST" action="{{ url_for('delete_account') }}" style="display: none;"></form>
+    {% endif %}
+
+</body>
+</html>

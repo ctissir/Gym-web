@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Update Membership - Gym 4 U{% endblock %}
+
+{% block content %}
+<!--
+Membership update template (route name remains manage_addons for compatibility).
+Purpose: after cycle end (remaining days = 0), member can change gym, access tier, and add-ons.
+Submitting this form sends the member to payment; the new cycle starts only after payment succeeds.
+-->
+<div class="calculator-container manage-memberships-page">
+    <h1>Update Membership</h1>
+    <p>When your remaining days reach 0, you can change gym, access tier, and add-ons. Complete payment to activate the updated membership.</p>
+
+    <!-- Flash feedback block for success/error responses from backend validation. -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }}">
+        <span>{{ message }}</span>
+    </div>
+    {% endfor %}
+    {% endwith %}
+
+    <!-- Generic template-level error fallback. -->
+    {% if error %}
+    <div class="alert alert-error">
+        <span>{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <!-- Current membership snapshot used as pre-change context. -->
+    <div class="form-section">
+        <h3 class="form-section-title">Current Membership</h3>
+        <p><strong>Gym:</strong> {{ current_gym_name }}</p>
+        <p><strong>Access Tier:</strong> {{ current_gym_type if current_gym_type != 'none' else 'No Gym Access' }}</p>
+        <p><strong>Current Add-ons:</strong> {{ current_addons|join(', ') if current_addons else 'None' }}</p>
+        <p><strong>Member Status:</strong> {{ status|capitalize }}</p>
+        <p><strong>Age:</strong> {{ member_age }} {% if is_student %}(Student){% endif %}</p>
+    </div>
+
+    <!-- Main update form posted to `/manage-addons`. -->
+    <form method="POST" action="{{ url_for('manage_addons') }}" novalidate>
+        <div class="form-section">
+            <h3 class="form-section-title">Choose Gym</h3>
+
+            <!-- Gym selector drives visible add-on panel via JS below. -->
+            <div class="form-group">
+                <label class="form-label" for="gym_name">Gym</label>
+                <select id="gym_name" name="gym_name" required>
+                    {% for gym in valid_gyms %}
+                    <option value="{{ gym }}" {% if gym == current_gym_name %}selected{% endif %}>{{ gym }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Access tier selector; `none` means no core gym access. -->
+            <div class="form-group">
+                <label class="form-label" for="gym_type">Access Type</label>
+                <select id="gym_type" name="gym_type" required>
+                    {% for gym_type in valid_gym_types %}
+                    <option value="{{ gym_type }}" {% if gym_type == current_gym_type %}selected{% endif %}>
+                        {{ gym_type if gym_type != 'none' else 'No Gym Access' }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="form-section-title">Choose Add-ons</h3>
+            <p class="step-note">Discountable add-ons are tagged based on your status and selected gym.</p>
+
+            <!-- uGym-specific add-on catalog and discount eligibility tags. -->
+            <div id="ugym-addons" class="addon-group">
+                <h4>
+                    uGym Add-ons
+                    {% if ugym.discount_rate|float > 0 %}
+                    (Discount: {{ '%.0f'|format(ugym.discount_rate|float * 100) }}%)
+                    {% endif %}
+                </h4>
+                <div class="checkbox-grid">
+                    {% for addon in ugym.addon_plans %}
+                    <label class="addon-option">
+                        <input type="checkbox" name="addons" value="{{ addon.plan_type }}" {% if addon.plan_type in current_addons %}checked{% endif %}>
+                        <div class="addon-option-content">
+                            <h4>{{ addon.plan_type }}</h4>
+                            <p class="addon-price">
+                                No gym: GBP {{ '%.2f'|format(addon.price_no_gym) }} | With gym: GBP {{ '%.2f'|format(addon.price_with_gym) }}
+                                {% if addon.plan_type in ugym.discountable_addons %}
+                                <span class="discount-label">Discountable</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Power Zone-specific add-on catalog and discount eligibility tags. -->
+            <div id="power-addons" class="addon-group">
+                <h4>
+                    Power Zone Add-ons
+                    {% if power_zone.discount_rate|float > 0 %}
+                    (Discount: {{ '%.0f'|format(power_zone.discount_rate|float * 100) }}%)
+                    {% endif %}
+                </h4>
+                <div class="checkbox-grid">
+                    {% for addon in power_zone.addon_plans %}
+                    <label class="addon-option">
+                        <input type="checkbox" name="addons" value="{{ addon.plan_type }}" {% if addon.plan_type in current_addons %}checked{% endif %}>
+                        <div class="addon-option-content">
+                            <h4>{{ addon.plan_type }}</h4>
+                            <p class="addon-price">
+                                No gym: GBP {{ '%.2f'|format(addon.price_no_gym) }} | With gym: GBP {{ '%.2f'|format(addon.price_with_gym) }}
+                                {% if addon.plan_type in power_zone.discountable_addons %}
+                                <span class="discount-label">Discountable</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <!-- Save pending changes then continue to payment before activation. -->
+            <button type="submit" class="btn-submit">Go to payment</button>
+                <a href="{{ url_for('account') }}" class="btn-submit" style="background: rgba(59, 130, 246, 0.18); color: #F1F5F9; border: 1px solid rgba(59, 130, 246, 0.35); text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </form>
+</div>
+
+<style>
+/* Local styles for card-like add-on selector grid and gym-aware sections. */
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.addon-group {
+    margin-bottom: 1.25rem;
+}
+
+.addon-option {
+    position: relative;
+    cursor: pointer;
+}
+
+.addon-option input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+}
+
+.addon-option-content {
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    border-radius: 14px;
+    background: rgba(241, 245, 249, 0.03);
+    padding: 1rem;
+    transition: all 0.2s ease;
+}
+
+.addon-option:hover .addon-option-content {
+    transform: translateY(-2px);
+    border-color: rgba(59, 130, 246, 0.45);
+    box-shadow: 0 10px 24px rgba(31, 41, 55, 0.25);
+}
+
+.addon-option input[type="checkbox"]:checked + .addon-option-content {
+    border-color: var(--accent);
+    background: rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.addon-option-content h4 {
+    margin: 0 0 0.5rem;
+    color: var(--text-primary);
+}
+
+.addon-price {
+    margin: 0;
+    color: var(--text-soft);
+    font-weight: 600;
+}
+
+.discount-label {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.2);
+    color: #3B82F6;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.step-note {
+    color: var(--text-soft);
+    font-size: 0.9rem;
+}
+
+select {
+    width: 100%;
+    min-height: 46px;
+    border: 2px solid rgba(59, 130, 246, 0.28);
+    background: #1F2937;
+    color: var(--text-primary);
+    border-radius: 12px;
+    padding: 0.72rem 0.9rem;
+}
+
+@media (max-width: 640px) {
+    .checkbox-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+// Toggle visible add-on set based on selected gym in the dropdown.
+const gymSelect = document.getElementById('gym_name');
+const ugymBlock = document.getElementById('ugym-addons');
+const powerBlock = document.getElementById('power-addons');
+
+function toggleAddonBlocks() {
+    // Show only relevant gym's add-ons to avoid cross-gym confusion.
+    const selectedGym = gymSelect.value;
+    if (selectedGym === 'uGym') {
+        ugymBlock.style.display = 'block';
+        powerBlock.style.display = 'none';
+    } else {
+        ugymBlock.style.display = 'none';
+        powerBlock.style.display = 'block';
+    }
+}
+
+gymSelect.addEventListener('change', toggleAddonBlocks);
+toggleAddonBlocks();
+</script>
+{% endblock %}

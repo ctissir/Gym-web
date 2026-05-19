@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Comparison Results - Gym 4 U{% endblock %}
+
+{% block content %}
+<!--
+Comparison results template.
+Purpose: display computed totals for both gyms and let user choose one to continue.
+Form posts selected gym to `/select-gym`.
+-->
+<div class="calculator-container no-card results-page">
+    <h1>Membership Comparison</h1>
+    <p>Here is your pricing summary based on your selected options. Choose the gym you want, then continue to your details.</p>
+
+    {% if error %}
+    <!-- Error shown if user tried to continue without selecting a gym option. -->
+    <div class="alert alert-error">
+        <span>{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <!-- Echoes the user input choices used in this calculation. -->
+    <div class="form-section">
+        <h3 class="form-section-title">Your Selection</h3>
+        <p><strong>Gym Access:</strong> {{ gym_type }}</p>
+        <p><strong>Add-ons:</strong> {{ addons | join(', ') if addons else 'None' }}</p>
+    </div>
+
+    <!-- Gym choice form: radio card selection with computed totals and discount details. -->
+    <form method="POST" action="{{ url_for('select_gym') }}" novalidate>
+        <div class="price-choice-grid">
+            <!-- uGym offer card. -->
+            <label class="price-option-card {% if better_gym == 'uGym' %}is-best{% endif %}">
+                <input type="radio" name="selected_gym" value="uGym" required>
+                <div class="price-option-content">
+                    <img src="{{ url_for('static', filename='uGym.avif') }}" alt="uGym training" class="price-option-image">
+                    <div class="price-option-header">
+                        <h3>uGym</h3>
+                        {% if better_gym == 'uGym' %}
+                        <span class="best-badge">Cheapest</span>
+                        {% endif %}
+                    </div>
+                    <p class="price-total">&pound;{{ '%.2f'|format(ugym_result.total_cost) }} <small>/month</small></p>
+                    {% if ugym_result.joining_fee|float > 0 %}
+                    <p><strong>Joining fee:</strong> &pound;{{ '%.2f'|format(ugym_result.joining_fee) }}</p>
+                    <p><strong>Initial payment:</strong> &pound;{{ '%.2f'|format(ugym_result.joining_fee + ugym_result.total_cost) }}</p>
+                    {% else %}
+                    <p><strong>Initial payment:</strong> &pound;{{ '%.2f'|format(ugym_result.total_cost) }}</p>
+                    {% endif %}
+                    {% if ugym_result.discount_rate|float > 0 %}
+                    <p><strong>Discount:</strong> &pound;{{ '%.2f'|format(ugym_result.discount_amount) }} ({{ '%.0f'|format(ugym_result.discount_rate|float) }}%)</p>
+                    {% endif %}
+                </div>
+            </label>
+
+            <!-- Power Zone offer card. -->
+            <label class="price-option-card {% if better_gym == 'Power Zone' %}is-best{% endif %}">
+                <input type="radio" name="selected_gym" value="Power Zone" required>
+                <div class="price-option-content">
+                    <img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=500&q=80" alt="Power Zone strength" class="price-option-image">
+                    <div class="price-option-header">
+                        <h3>Power Zone</h3>
+                        {% if better_gym == 'Power Zone' %}
+                        <span class="best-badge">Cheapest</span>
+                        {% endif %}
+                    </div>
+                    <p class="price-total">&pound;{{ '%.2f'|format(power_result.total_cost) }} <small>/month</small></p>
+                    {% if power_result.joining_fee|float > 0 %}
+                    <p><strong>Joining fee:</strong> &pound;{{ '%.2f'|format(power_result.joining_fee) }}</p>
+                    <p><strong>Initial payment:</strong> &pound;{{ '%.2f'|format(power_result.joining_fee + power_result.total_cost) }}</p>
+                    {% else %}
+                    <p><strong>Initial payment:</strong> &pound;{{ '%.2f'|format(power_result.total_cost) }}</p>
+                    {% endif %}
+                    {% if power_result.discount_rate|float > 0 %}
+                    <p><strong>Discount:</strong> &pound;{{ '%.2f'|format(power_result.discount_amount) }} ({{ '%.0f'|format(power_result.discount_rate|float) }}%)</p>
+                    {% endif %}
+                </div>
+            </label>
+        </div>
+
+        <div class="form-actions">
+            <!-- Moves user to member details step with selected gym. -->
+            <button type="submit" class="btn-submit btn-submit-dark">Continue with selected gym</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
